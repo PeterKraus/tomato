@@ -27,7 +27,7 @@ def data_poller(
     root: str,
     kwargs: dict
 ) -> None:
-    delay = 10
+    delay = 60
     cont = True
     while cont:
         ts, data = driver_api(
@@ -70,7 +70,7 @@ def driver_worker(settings: dict, pipeline: dict, payload: dict, jobid: int) -> 
         ts, ready, metadata = driver_api(
             drv, "get_status", addr, ch, **dpar
         )
-        assert ready, f"Failed: device '{dev}' is not ready."
+        assert ready, f"Failed: device '{dev}' is not ready: {metadata}"
 
         log.debug(f"jobid {jobid}: starting payload for device '{dev}'")
         start_ts = driver_api(
