@@ -4,6 +4,8 @@ import subprocess
 import time
 import json
 import logging
+import argparse
+import json
 from .. import dbhandler
 
 
@@ -96,3 +98,23 @@ def main_loop(settings: dict, pipelines: dict, test: bool = False) -> None:
                         )
                         break
         time.sleep(settings.get("main loop", 1))
+
+
+def tomato_main() -> None:
+    print("Made it here")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "configfile",
+        help="Path to a tomato-processed daemon config file.",
+        default=None,
+    )
+    args = parser.parse_args()
+    log = logging.getLogger(__name__)
+    log.debug("loading config file '%s'", args.configfile)
+    with open(args.configfile, "r") as cf:
+        jsdata = json.load(cf)
+    log.info("starting main loop")
+    main_loop(**jsdata)
+    log.info("deleting lock file")
+    os.unlink(args.configfile)
+    log.debug("exiting.")

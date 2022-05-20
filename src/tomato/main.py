@@ -7,6 +7,8 @@ import logging
 import psutil
 import os
 from importlib import metadata
+import subprocess
+import json
 
 from . import daemon
 from . import dbhandler
@@ -78,14 +80,12 @@ def run_tomato():
     args = parser.parse_args()
     _logging_setup(args)
 
-    ppid = os.getppid() # On Windows, tomato.exe is the parent of os.getpid()
     toms = [
-        p.pid for p in psutil.process_iter() if p.name() in {"tomato", "tomato.exe"}
+        p.pid for p in psutil.process_iter() if "tomato_main" in p.name()
     ]
-    toms.pop(toms.index(ppid))
     if len(toms) > 0 and not args.test:
-        logging.critical("cannot run more than one instance of 'tomato'")
-        logging.info(f"'tomato' is currently running as pid {toms}")
+        logging.critical("cannot run more than one instance of 'tomato_main'")
+        logging.info(f"'tomato_main' is currently running as pid {toms}")
         return
 
     dirs = setlib.get_dirs(args.test)
@@ -98,8 +98,18 @@ def run_tomato():
     sync_pipelines_to_state(
         pipelines, settings["state"]["path"], type=settings["state"]["type"]
     )
-
-    daemon.main_loop(settings, pipelines, test = args.test)
+    config = {"settings": settings, "pipelines": pipelines, "test": args.test}
+    cpath = os.path.join(dirs.user_config_dir, ".lock.json")
+    with open(cpath, "w") as cf:
+        json.dump(config, cf)
+    cfs = subprocess.CREATE_NO_WINDOW
+    if not args.test:
+        cfs |= subprocess.CREATE_NEW_PROCESS_GROUP
+    subprocess.Popen(
+        ["tomato_main", str(cpath)],
+        creationflags=cfs,
+    )
+    #daemon.main_loop(settings, pipelines, test = args.test)
 
 
 def run_ketchup():
